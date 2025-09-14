@@ -1280,7 +1280,8 @@ void application::initialize()
 		openxr_post_processing_supported = true;
 	}
 
-	if (xr_instance.has_extension(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME)) {
+	if (xr_instance.has_extension(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME))
+	{
 		spdlog::info("    OpenXR performance setting extension support: true");
 	}
 

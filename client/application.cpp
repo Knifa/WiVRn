@@ -1221,6 +1221,7 @@ void application::initialize()
 	opt_extensions.push_back(XR_EXT_USER_PRESENCE_EXTENSION_NAME);
 	opt_extensions.push_back(XR_KHR_VISIBILITY_MASK_EXTENSION_NAME);
 	opt_extensions.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
+	opt_extensions.push_back(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME);
 
 	for (const auto & i: interaction_profiles)
 		opt_extensions.insert(opt_extensions.end(), i.required_extensions.begin(), i.required_extensions.end());
@@ -1279,6 +1280,10 @@ void application::initialize()
 		openxr_post_processing_supported = true;
 	}
 
+	if (xr_instance.has_extension(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME)) {
+		spdlog::info("    OpenXR performance setting extension support: true");
+	}
+
 	switch (xr_system_id.passthrough_supported())
 	{
 		case xr::passthrough_type::none:
@@ -1301,6 +1306,7 @@ void application::initialize()
 	initialize_vulkan();
 
 	xr_session = xr::session(xr_instance, xr_system_id, vk_instance, vk_physical_device, vk_device, vk_queue, vk_queue_family_index);
+	xr_session.set_performance_level();
 
 	spaces[size_t(xr::spaces::view)] = xr_session.create_reference_space(XR_REFERENCE_SPACE_TYPE_VIEW);
 	spaces[size_t(xr::spaces::world)] = xr_session.create_reference_space(XR_REFERENCE_SPACE_TYPE_STAGE);

@@ -91,5 +91,7 @@ public:
 	{
 		return passthrough;
 	}
+
+	void set_performance_level();
 };
 } // namespace xr

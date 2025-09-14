@@ -26,6 +26,7 @@
 #include "xr/system.h"
 #include "xr/to_string.h"
 #include <ranges>
+#include <spdlog/spdlog.h>
 #include <vulkan/vulkan.h>
 #include <openxr/openxr_platform.h>
 
@@ -367,4 +368,21 @@ void xr::session::disable_passthrough()
 	if (std::holds_alternative<std::monostate>(passthrough))
 		return;
 	passthrough.emplace<std::monostate>();
+}
+
+
+void xr::session::set_performance_level()
+{
+	if (!inst->has_extension(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME))
+		return;
+
+	static auto xrPerfSettingsSetPerformanceLevelEXT = inst->get_proc<PFN_xrPerfSettingsSetPerformanceLevelEXT>("xrPerfSettingsSetPerformanceLevelEXT");
+
+	spdlog::info("Setting peformance level");
+	if (XR_FAILED(xrPerfSettingsSetPerformanceLevelEXT(id, XR_PERF_SETTINGS_DOMAIN_CPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_LOW_EXT))) {
+		spdlog::warn("  Couldn't set CPU performance level");
+	}
+	if (XR_FAILED(xrPerfSettingsSetPerformanceLevelEXT(id, XR_PERF_SETTINGS_DOMAIN_GPU_EXT, XR_PERF_SETTINGS_LEVEL_SUSTAINED_LOW_EXT))) {
+		spdlog::warn("  Couldn't set GPU performance level");
+	}
 }

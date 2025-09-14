@@ -9,303 +9,303 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  build-server:
-    name: Linux server
-    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
-    # You can convert this to a matrix build if you need cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-24.04
-    if: ${{ vars.APK_ONLY == '' }}
+#   build-server:
+#     name: Linux server
+#     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+#     # You can convert this to a matrix build if you need cross-platform coverage.
+#     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+#     runs-on: ubuntu-24.04
+#     if: ${{ vars.APK_ONLY == '' }}
 
-    strategy:
-      matrix:
-        cmake_preset: ['server', 'server-no-systemd', 'server-no-system-boost']
+#     strategy:
+#       matrix:
+#         cmake_preset: ['server', 'server-no-systemd', 'server-no-system-boost']
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        create-symlink: true
+#     - name: ccache
+#       uses: hendrikmuhs/ccache-action@v1.2
+#       with:
+#         create-symlink: true
 
-    - name: Install dependencies
-      run: >
-        sudo apt-get update && sudo apt-get install libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libavahi-glib-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev libboost-all-dev librsvg2-bin libssl-dev libnotify-dev librsvg2-dev libarchive-dev
-    - name: Prepare Vulkan SDK
-      uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
-      with:
-        vulkan-query-version: 1.3.296.0
-        vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
-        vulkan-use-cache: true
+#     - name: Install dependencies
+#       run: >
+#         sudo apt-get update && sudo apt-get install libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libavahi-glib-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev libboost-all-dev librsvg2-bin libssl-dev libnotify-dev librsvg2-dev libarchive-dev
+#     - name: Prepare Vulkan SDK
+#       uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
+#       with:
+#         vulkan-query-version: 1.3.296.0
+#         vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
+#         vulkan-use-cache: true
 
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: >
-        cmake -B ${{github.workspace}}/build
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DCMAKE_INSTALL_PREFIX=/usr
-        --preset ${{ matrix.cmake_preset }}
+#     - name: Configure CMake
+#       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+#       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+#       run: >
+#         cmake -B ${{github.workspace}}/build
+#         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+#         -DCMAKE_INSTALL_PREFIX=/usr
+#         --preset ${{ matrix.cmake_preset }}
 
-    - name: Package build dependencies
-      if: ${{ matrix.cmake_preset == 'server' }}
-      # For easier packaging, build dependencies are made available as a separate archive
-      run: (cd ${{github.workspace}}/build/_deps/ ; tar --create --xz *-src) > ${{github.workspace}}/server-build-deps.tar.xz
+#     - name: Package build dependencies
+#       if: ${{ matrix.cmake_preset == 'server' }}
+#       # For easier packaging, build dependencies are made available as a separate archive
+#       run: (cd ${{github.workspace}}/build/_deps/ ; tar --create --xz *-src) > ${{github.workspace}}/server-build-deps.tar.xz
 
-    - name: Build
-      # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+#     - name: Build
+#       # Build your program with the given configuration
+#       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Publish build dependencies
-      if: ${{ matrix.cmake_preset == 'server' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: server-build-deps
-        path: server-build-deps.tar.xz
+#     - name: Publish build dependencies
+#       if: ${{ matrix.cmake_preset == 'server' }}
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: server-build-deps
+#         path: server-build-deps.tar.xz
 
-    - name: Release build dependencies
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/') && matrix.cmake_preset == 'server'
-      with:
-        tag_name: ${{ inputs.ref }}
-        generate_release_notes: true
-        draft: true
-        files: server-build-deps.tar.xz
+#     - name: Release build dependencies
+#       uses: softprops/action-gh-release@v2
+#       if: startsWith(github.ref, 'refs/tags/') && matrix.cmake_preset == 'server'
+#       with:
+#         tag_name: ${{ inputs.ref }}
+#         generate_release_notes: true
+#         draft: true
+#         files: server-build-deps.tar.xz
 
-  build-dashboard:
-    name: Linux dashboard
-    runs-on: ubuntu-24.04
-    container: ubuntu:plucky
-    if: ${{ vars.APK_ONLY == '' }}
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#   build-dashboard:
+#     name: Linux dashboard
+#     runs-on: ubuntu-24.04
+#     container: ubuntu:plucky
+#     if: ${{ vars.APK_ONLY == '' }}
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: Install dependencies
-      run: >
-        apt-get update && apt-get install --yes libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev  libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libboost-all-dev librsvg2-bin libssl-dev libnotify-dev qt6-declarative-dev extra-cmake-modules libkirigami-dev libkf6i18n-dev libkf6coreaddons-dev libkf6qqc2desktopstyle-dev libkf6iconthemes-dev jq sudo cmake gcc g++ git qcoro-qt6-dev librsvg2-dev libarchive-dev libglm-dev glslang-tools
-# runtime: qml6-module-qtqml-workerscript qml6-module-qtquick-dialogs
+#     - name: Install dependencies
+#       run: >
+#         apt-get update && apt-get install --yes libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev  libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libboost-all-dev librsvg2-bin libssl-dev libnotify-dev qt6-declarative-dev extra-cmake-modules libkirigami-dev libkf6i18n-dev libkf6coreaddons-dev libkf6qqc2desktopstyle-dev libkf6iconthemes-dev jq sudo cmake gcc g++ git qcoro-qt6-dev librsvg2-dev libarchive-dev libglm-dev glslang-tools
+# # runtime: qml6-module-qtqml-workerscript qml6-module-qtquick-dialogs
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/build
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DCMAKE_INSTALL_PREFIX=/usr
-        --preset dashboard
+#     - name: Configure CMake
+#       run: >
+#         cmake -B ${{github.workspace}}/build
+#         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+#         -DCMAKE_INSTALL_PREFIX=/usr
+#         --preset dashboard
 
-    - name: Build
-      # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+#     - name: Build
+#       # Build your program with the given configuration
+#       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-  build-server-flatpak:
-    name: Linux server (flatpak)
-    runs-on: ubuntu-24.04
-    if: ${{ vars.APK_ONLY == '' }}
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8
-      options: --privileged
+#   build-server-flatpak:
+#     name: Linux server (flatpak)
+#     runs-on: ubuntu-24.04
+#     if: ${{ vars.APK_ONLY == '' }}
+#     container:
+#       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.8
+#       options: --privileged
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: Create the flatpak manifest
-      run: |
-        git config --global --add safe.directory $(pwd)
-        pip install toml aiohttp
-        tools/gen_flatpak_manifest.py --gitlocal --out flatpak
-        cat flatpak/io.github.wivrn.wivrn.yml
+#     - name: Create the flatpak manifest
+#       run: |
+#         git config --global --add safe.directory $(pwd)
+#         pip install toml aiohttp
+#         tools/gen_flatpak_manifest.py --gitlocal --out flatpak
+#         cat flatpak/io.github.wivrn.wivrn.yml
 
-    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.4
-      with:
-        manifest-path: flatpak/io.github.wivrn.wivrn.yml
-        bundle: wivrn-server.flatpak
-        upload-artifact: false
+#     - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.4
+#       with:
+#         manifest-path: flatpak/io.github.wivrn.wivrn.yml
+#         bundle: wivrn-server.flatpak
+#         upload-artifact: false
 
-    # Upload manually instead of using flatpak/flatpak-github-actions/flatpak-builder because
-    # it uses upload-artifact@v3
-    - name: Publish artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: wivrn-flatpak-x86_64
-        path: wivrn-server.flatpak
+#     # Upload manually instead of using flatpak/flatpak-github-actions/flatpak-builder because
+#     # it uses upload-artifact@v3
+#     - name: Publish artifact
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: wivrn-flatpak-x86_64
+#         path: wivrn-server.flatpak
 
-    - name: Debug bundle
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: flatpak-debug
-        path: .flatpak-builder
-        include-hidden-files: true
-        retention-days: 1
+#     - name: Debug bundle
+#       uses: actions/upload-artifact@v4
+#       if: failure()
+#       with:
+#         name: flatpak-debug
+#         path: .flatpak-builder
+#         include-hidden-files: true
+#         retention-days: 1
 
-  nix-test:
-    name: Test Nix package and devshell
-    runs-on: ubuntu-24.04
-    if: ${{ vars.APK_ONLY == '' }}
+#   nix-test:
+#     name: Test Nix package and devshell
+#     runs-on: ubuntu-24.04
+#     if: ${{ vars.APK_ONLY == '' }}
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - uses: cachix/install-nix-action@v31
-    - run: nix flake check
-    - run: nix build
+#     - uses: cachix/install-nix-action@v31
+#     - run: nix flake check
+#     - run: nix build
 
-  build-test-client:
-    name: Linux client
-    runs-on: ubuntu-24.04
-    if: ${{ vars.APK_ONLY == '' }}
+#   build-test-client:
+#     name: Linux client
+#     runs-on: ubuntu-24.04
+#     if: ${{ vars.APK_ONLY == '' }}
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        create-symlink: true
+#     - name: ccache
+#       uses: hendrikmuhs/ccache-action@v1.2
+#       with:
+#         create-symlink: true
 
-    - name: Prepare Vulkan SDK
-      uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
-      with:
-        vulkan-query-version: 1.3.296.0
-        vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
-        vulkan-use-cache: true
+#     - name: Prepare Vulkan SDK
+#       uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
+#       with:
+#         vulkan-query-version: 1.3.296.0
+#         vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
+#         vulkan-use-cache: true
 
-    - name: Install dependencies
-      run: >
-        sudo apt-get update && sudo apt-get install libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev libxcb-glx0-dev gettext libfontconfig-dev libboost-all-dev librsvg2-bin libssl-dev sway grim mesa-vulkan-drivers wayland-protocols fonts-noto-cjk fonts-roboto
+#     - name: Install dependencies
+#       run: >
+#         sudo apt-get update && sudo apt-get install libvulkan-dev libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev libxcb-glx0-dev gettext libfontconfig-dev libboost-all-dev librsvg2-bin libssl-dev sway grim mesa-vulkan-drivers wayland-protocols fonts-noto-cjk fonts-roboto
 
-    - name: install server dependencies
-      run: >
-        sudo apt-get update && sudo apt-get install libavahi-glib-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libnotify-dev librsvg2-dev libarchive-dev
+#     - name: install server dependencies
+#       run: >
+#         sudo apt-get update && sudo apt-get install libavahi-glib-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libnotify-dev librsvg2-dev libarchive-dev
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/build
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DCMAKE_INSTALL_PREFIX=/usr
-        -DWIVRN_USE_SYSTEM_OPENXR=OFF
-        --preset everything
-        -DWIVRN_BUILD_DASHBOARD=OFF
-        -DWIVRN_BUILD_DISSECTOR=OFF
+#     - name: Configure CMake
+#       run: >
+#         cmake -B ${{github.workspace}}/build
+#         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+#         -DCMAKE_INSTALL_PREFIX=/usr
+#         -DWIVRN_USE_SYSTEM_OPENXR=OFF
+#         --preset everything
+#         -DWIVRN_BUILD_DASHBOARD=OFF
+#         -DWIVRN_BUILD_DISSECTOR=OFF
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+#     - name: Build
+#       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Build Monado
-      # Disable XRT_FEATURE_OPENXR_VISIBILITY_MASK because of https://gitlab.freedesktop.org/monado/monado/-/issues/480
-      run: |
-        mkdir monado
-        curl https://gitlab.freedesktop.org/Meumeu/monado/-/archive/5bdb51697685320e3f5d494210f25fb2967c9fc3/monado-main.tar.gz | tar -xz -C monado --strip-components=1
-        patch --directory=${{github.workspace}}/monado --strip=1 < ${{github.workspace}}/patches/monado-ci/0001-remote-resolution.patch
+#     - name: Build Monado
+#       # Disable XRT_FEATURE_OPENXR_VISIBILITY_MASK because of https://gitlab.freedesktop.org/monado/monado/-/issues/480
+#       run: |
+#         mkdir monado
+#         curl https://gitlab.freedesktop.org/Meumeu/monado/-/archive/5bdb51697685320e3f5d494210f25fb2967c9fc3/monado-main.tar.gz | tar -xz -C monado --strip-components=1
+#         patch --directory=${{github.workspace}}/monado --strip=1 < ${{github.workspace}}/patches/monado-ci/0001-remote-resolution.patch
 
-        DRIVERS=$(grep -oE "XRT_BUILD_DRIVER_[A-Z0-9_]*" monado/CMakeLists.txt | sort -u  | grep -v XRT_BUILD_DRIVER_REMOTE | sed 's/\(.*\)/-D\1=OFF/')
-        cmake monado -B ${{github.workspace}}/build-monado -DCMAKE_BUILD_TYPE=Release -DXRT_FEATURE_SERVICE_SYSTEMD=OFF -DXRT_FEATURE_SERVICE=OFF -DXRT_BUILD_DRIVER_REMOTE=ON -DXRT_MODULE_COMPOSITOR_MAIN=ON -DXRT_HAVE_WAYLAND=ON $DRIVERS -DXRT_MODULE_MONADO_REMOTECTL=ON -DBUILD_TESTING=OFF -DXRT_FEATURE_OPENXR_VISIBILITY_MASK=OFF
+#         DRIVERS=$(grep -oE "XRT_BUILD_DRIVER_[A-Z0-9_]*" monado/CMakeLists.txt | sort -u  | grep -v XRT_BUILD_DRIVER_REMOTE | sed 's/\(.*\)/-D\1=OFF/')
+#         cmake monado -B ${{github.workspace}}/build-monado -DCMAKE_BUILD_TYPE=Release -DXRT_FEATURE_SERVICE_SYSTEMD=OFF -DXRT_FEATURE_SERVICE=OFF -DXRT_BUILD_DRIVER_REMOTE=ON -DXRT_MODULE_COMPOSITOR_MAIN=ON -DXRT_HAVE_WAYLAND=ON $DRIVERS -DXRT_MODULE_MONADO_REMOTECTL=ON -DBUILD_TESTING=OFF -DXRT_FEATURE_OPENXR_VISIBILITY_MASK=OFF
 
-        cmake --build ${{github.workspace}}/build-monado
+#         cmake --build ${{github.workspace}}/build-monado
 
-    - name: Take screenshots
-      continue-on-error: true
-      env:
-        WLR_BACKENDS: headless
-        WLR_RENDERER: pixman
-        WLR_LIBINPUT_NO_DEVICES: 1
-        XR_RUNTIME_JSON: ${{github.workspace}}/build-monado/openxr_monado-dev.json
-        P_OVERRIDE_ACTIVE_CONFIG: remote
-        WIVRN_CONTROLLER: meta-quest-touch-plus
-        WIVRN_GRIP_LEFT_OFFSET: '0 0 0 0 45 0'
-        WIVRN_GRIP_RIGHT_OFFSET: '0 0 0 0 45 0'
-        XRT_COMPOSITOR_SCALE_PERCENTAGE: '100'
-      run: |
-        echo "xwayland disable" > sway-config
-        echo -e "output HEADLESS-1 {\n mode 2560x1440@60Hz\n}" >> sway-config
-        sway -c sway-config &
-        sleep 10
-        export WAYLAND_DISPLAY=$(cd "${XDG_RUNTIME_DIR}" && ls -tr wayland* | tail -1)
+#     - name: Take screenshots
+#       continue-on-error: true
+#       env:
+#         WLR_BACKENDS: headless
+#         WLR_RENDERER: pixman
+#         WLR_LIBINPUT_NO_DEVICES: 1
+#         XR_RUNTIME_JSON: ${{github.workspace}}/build-monado/openxr_monado-dev.json
+#         P_OVERRIDE_ACTIVE_CONFIG: remote
+#         WIVRN_CONTROLLER: meta-quest-touch-plus
+#         WIVRN_GRIP_LEFT_OFFSET: '0 0 0 0 45 0'
+#         WIVRN_GRIP_RIGHT_OFFSET: '0 0 0 0 45 0'
+#         XRT_COMPOSITOR_SCALE_PERCENTAGE: '100'
+#       run: |
+#         echo "xwayland disable" > sway-config
+#         echo -e "output HEADLESS-1 {\n mode 2560x1440@60Hz\n}" >> sway-config
+#         sway -c sway-config &
+#         sleep 10
+#         export WAYLAND_DISPLAY=$(cd "${XDG_RUNTIME_DIR}" && ls -tr wayland* | tail -1)
 
-        mkdir -p ~/.config/fontconfig
-        cp ${{github.workspace}}/.github/fonts.conf ~/.config/fontconfig/fonts.conf
+#         mkdir -p ~/.config/fontconfig
+#         cp ${{github.workspace}}/.github/fonts.conf ~/.config/fontconfig/fonts.conf
 
-        ${{github.workspace}}/build/server/wivrn-server --no-encrypt --no-publish-service &
-        WIVRN_SERVER_PID=$!
+#         ${{github.workspace}}/build/server/wivrn-server --no-encrypt --no-publish-service &
+#         WIVRN_SERVER_PID=$!
 
-        mkdir -p ~/.config/wivrn
-        echo '{"servers": [{"autoconnect": false, "manual": true, "pretty_name": "Deep Thought", "hostname": "localhost", "port": 9757, "tcp_only": false, "cookie": ""}], "first_run": false}' > ~/.config/wivrn/client.json.in
+#         mkdir -p ~/.config/wivrn
+#         echo '{"servers": [{"autoconnect": false, "manual": true, "pretty_name": "Deep Thought", "hostname": "localhost", "port": 9757, "tcp_only": false, "cookie": ""}], "first_run": false}' > ~/.config/wivrn/client.json.in
 
-        for LANG in en $(basename -a ${{github.workspace}}/locale/*)
-        do
-          mkdir ${LANG}
+#         for LANG in en $(basename -a ${{github.workspace}}/locale/*)
+#         do
+#           mkdir ${LANG}
 
-          if [ ${LANG} = fr ]
-          then
-                cat ~/.config/wivrn/client.json.in | jq .virtual_keyboard_layout=\"AZERTY\" > ~/.config/wivrn/client.json
-          else
-                cat ~/.config/wivrn/client.json.in | jq .virtual_keyboard_layout=\"QWERTY\" > ~/.config/wivrn/client.json
-          fi
+#           if [ ${LANG} = fr ]
+#           then
+#                 cat ~/.config/wivrn/client.json.in | jq .virtual_keyboard_layout=\"AZERTY\" > ~/.config/wivrn/client.json
+#           else
+#                 cat ~/.config/wivrn/client.json.in | jq .virtual_keyboard_layout=\"QWERTY\" > ~/.config/wivrn/client.json
+#           fi
 
-          ${{github.workspace}}/build/bin/wivrn &
-          WIVRN_PID=$!
-          sleep 10
-          ${{github.workspace}}/build-monado/src/xrt/targets/remotectl/monado-remotectl 127.0.0.1 4242 < ${{github.workspace}}/.github/screenshot-script.txt
-          killall wivrn
-          wait $WIVRN_PID || true
-        done
+#           ${{github.workspace}}/build/bin/wivrn &
+#           WIVRN_PID=$!
+#           sleep 10
+#           ${{github.workspace}}/build-monado/src/xrt/targets/remotectl/monado-remotectl 127.0.0.1 4242 < ${{github.workspace}}/.github/screenshot-script.txt
+#           killall wivrn
+#           wait $WIVRN_PID || true
+#         done
 
-        killall wivrn-server
-        wait $WIVRN_SERVER_PID || true
+#         killall wivrn-server
+#         wait $WIVRN_SERVER_PID || true
 
-    - name: Upload screenshots
-      uses: actions/upload-artifact@v4
-      with:
-        name: Screenshots
-        path: "*/screenshot-*.png"
+#     - name: Upload screenshots
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: Screenshots
+#         path: "*/screenshot-*.png"
 
-  build-dissector:
-    name: Wireshark dissector
-    runs-on: ubuntu-24.04
-    if: ${{ vars.APK_ONLY == '' }}
+#   build-dissector:
+#     name: Wireshark dissector
+#     runs-on: ubuntu-24.04
+#     if: ${{ vars.APK_ONLY == '' }}
 
-    strategy:
-      matrix:
-        # Ubuntu 24.04 has boost 1.83, the dissector requires 1.84
-        # cmake_preset: ['dissector', 'dissector-no-system-boost']
-        cmake_preset: ['dissector-no-system-boost']
+#     strategy:
+#       matrix:
+#         # Ubuntu 24.04 has boost 1.83, the dissector requires 1.84
+#         # cmake_preset: ['dissector', 'dissector-no-system-boost']
+#         cmake_preset: ['dissector-no-system-boost']
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: Prepare Vulkan SDK
-      uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
-      with:
-        vulkan-query-version: 1.3.296.0
-        vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
-        vulkan-use-cache: true
+#     - name: Prepare Vulkan SDK
+#       uses: humbletim/setup-vulkan-sdk@286ed76c72de45dbf50c515779cf4ca2f6aa3944
+#       with:
+#         vulkan-query-version: 1.3.296.0
+#         vulkan-components: Vulkan-Headers, Glslang, SPIRV-Tools
+#         vulkan-use-cache: true
 
-    - name: Install dependencies
-      run: >
-        sudo apt-get update && sudo apt-get install libvulkan-dev libopenxr-dev wireshark wireshark-dev libssl-dev
+#     - name: Install dependencies
+#       run: >
+#         sudo apt-get update && sudo apt-get install libvulkan-dev libopenxr-dev wireshark wireshark-dev libssl-dev
 
-    - name: Configure CMake
-      run: >
-        cmake -B ${{github.workspace}}/build
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DCMAKE_INSTALL_PREFIX=/usr
-        --preset ${{ matrix.cmake_preset }}
-        -DWIVRN_USE_SYSTEM_OPENXR=OFF
+#     - name: Configure CMake
+#       run: >
+#         cmake -B ${{github.workspace}}/build
+#         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+#         -DCMAKE_INSTALL_PREFIX=/usr
+#         --preset ${{ matrix.cmake_preset }}
+#         -DWIVRN_USE_SYSTEM_OPENXR=OFF
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+#     - name: Build
+#       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
   build-android:
     name: Android
@@ -456,180 +456,180 @@ jobs:
 
         ./ovr-platform-util upload-quest-build --app-id 7959676140827574 --token $OCULUS_TOKEN --apk apk/WiVRn-standard-oculus.apk --channel $CHANNEL --age-group TEENS_AND_ADULTS $IS_DRAFT --debug_symbols_dir debug/ --debug-symbols-pattern '*.so'
 
-  build-ubuntu:
-    name: Build Ubuntu package
-    if: ${{ vars.APK_ONLY == '' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        distro: ['plucky']
-    runs-on: ubuntu-24.04
-    container: ubuntu:${{ matrix.distro }}
-    steps:
+  # build-ubuntu:
+  #   name: Build Ubuntu package
+  #   if: ${{ vars.APK_ONLY == '' }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       distro: ['plucky']
+  #   runs-on: ubuntu-24.04
+  #   container: ubuntu:${{ matrix.distro }}
+  #   steps:
 
-    - name: Install dependencies
-      run: |
-        apt update
-        apt install --yes libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libavahi-glib-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libboost-all-dev librsvg2-bin dpkg-dev pkg-config debhelper-compat build-essential lintian cmake libnotify-dev qt6-declarative-dev extra-cmake-modules libkirigami-dev libkf6i18n-dev libkf6coreaddons-dev libkf6qqc2desktopstyle-dev libkf6iconthemes-dev jq sudo cmake gcc g++ git wget libssl-dev qcoro-qt6-dev librsvg2-dev libarchive-dev
+  #   - name: Install dependencies
+  #     run: |
+  #       apt update
+  #       apt install --yes libcjson-dev libx264-dev libavcodec-dev libavutil-dev libswscale-dev libavfilter-dev libbsd-dev libavahi-client-dev libavahi-glib-dev libeigen3-dev glslang-tools libudev-dev libwayland-dev libx11-xcb-dev libxrandr-dev libxcb-randr0-dev libgl-dev libglx-dev mesa-common-dev libgl1-mesa-dev libglu1-mesa-dev libsystemd-dev libva-dev nlohmann-json3-dev libpulse-dev xz-utils libpipewire-0.3-dev libcli11-dev qt6-base-dev qt6-tools-dev libcap-dev pkexec libboost-all-dev librsvg2-bin dpkg-dev pkg-config debhelper-compat build-essential lintian cmake libnotify-dev qt6-declarative-dev extra-cmake-modules libkirigami-dev libkf6i18n-dev libkf6coreaddons-dev libkf6qqc2desktopstyle-dev libkf6iconthemes-dev jq sudo cmake gcc g++ git wget libssl-dev qcoro-qt6-dev librsvg2-dev libarchive-dev
 
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        path: wivrn
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       fetch-depth: 0
+  #       path: wivrn
 
-    - name: Download monado
-      run: |
-        MONADO_COMMIT=$(cat wivrn/monado-rev)
-        wget https://gitlab.freedesktop.org/monado/monado/-/archive/$MONADO_COMMIT/monado-$MONADO_COMMIT.tar.gz
+  #   - name: Download monado
+  #     run: |
+  #       MONADO_COMMIT=$(cat wivrn/monado-rev)
+  #       wget https://gitlab.freedesktop.org/monado/monado/-/archive/$MONADO_COMMIT/monado-$MONADO_COMMIT.tar.gz
 
-        mkdir wivrn/monado-src
-        tar xzf monado-*.tar.gz --strip-components=1 -C wivrn/monado-src
+  #       mkdir wivrn/monado-src
+  #       tar xzf monado-*.tar.gz --strip-components=1 -C wivrn/monado-src
 
-    - name: Patch monado
-      working-directory: wivrn/monado-src
-      run: >
-        for p in ../patches/monado/*; do
-          patch -p1 --fuzz=0 --forward < "$p"
-        done
+  #   - name: Patch monado
+  #     working-directory: wivrn/monado-src
+  #     run: >
+  #       for p in ../patches/monado/*; do
+  #         patch -p1 --fuzz=0 --forward < "$p"
+  #       done
 
-    - name: Download stb
-      run: |
-        wget https://github.com/nothings/stb/archive/013ac3beddff3dbffafd5177e7972067cd2b5083.tar.gz -O stb.tar.gz
+  #   - name: Download stb
+  #     run: |
+  #       wget https://github.com/nothings/stb/archive/013ac3beddff3dbffafd5177e7972067cd2b5083.tar.gz -O stb.tar.gz
 
-        mkdir wivrn/stb-src
-        tar xzf stb.tar.gz --strip-components=1 -C wivrn/stb-src
+  #       mkdir wivrn/stb-src
+  #       tar xzf stb.tar.gz --strip-components=1 -C wivrn/stb-src
 
-    - name: Edit changelog
-      working-directory: wivrn
-      run: >
-        tools/gen_debian_changelog.py
-        --out debian/changelog
-        ${{ (startsWith(github.ref, 'refs/tags/') && '' ) || '--nightly' }}
-        --author "github-actions <41898282+github-actions@users.noreply.github.com>"
-        --distribution "${{ matrix.distro }}";
-        cat debian/changelog
+  #   - name: Edit changelog
+  #     working-directory: wivrn
+  #     run: >
+  #       tools/gen_debian_changelog.py
+  #       --out debian/changelog
+  #       ${{ (startsWith(github.ref, 'refs/tags/') && '' ) || '--nightly' }}
+  #       --author "github-actions <41898282+github-actions@users.noreply.github.com>"
+  #       --distribution "${{ matrix.distro }}";
+  #       cat debian/changelog
 
-    - name: Build package
-      working-directory: wivrn
-      run: dpkg-buildpackage --build=binary --no-sign
+  #   - name: Build package
+  #     working-directory: wivrn
+  #     run: dpkg-buildpackage --build=binary --no-sign
 
-    - name: Publish package
-      uses: actions/upload-artifact@v4
-      with:
-        name: wivrn-${{ matrix.distro }}
-        path: |
-          *.deb
-          *.ddeb
+  #   - name: Publish package
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: wivrn-${{ matrix.distro }}
+  #       path: |
+  #         *.deb
+  #         *.ddeb
 
-    - name: Check package
-      working-directory: wivrn
-      run: lintian --fail-on error | sed -e s/^W:/::warning::/ -e s/^E:/::error::/
+  #   - name: Check package
+  #     working-directory: wivrn
+  #     run: lintian --fail-on error | sed -e s/^W:/::warning::/ -e s/^E:/::error::/
 
-  release:
-    name: Create release
-    runs-on: ubuntu-22.04
-    needs: [build-server, build-android, build-test-client, build-dissector, build-server-flatpak, build-ubuntu, build-dashboard]
-    if: success() && startsWith(github.ref, 'refs/tags/')
+  # release:
+  #   name: Create release
+  #   runs-on: ubuntu-22.04
+  #   needs: [build-server, build-android, build-test-client, build-dissector, build-server-flatpak, build-ubuntu, build-dashboard]
+  #   if: success() && startsWith(github.ref, 'refs/tags/')
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        path: wivrn
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       fetch-depth: 0
+  #       path: wivrn
 
-    - name: Check for FLATHUB_TOKEN
-      id: flathub-token-check
-      shell: bash
-      run: |
-        if [[ "${{ secrets.FLATHUB_TOKEN}}" != '' ]]; then
-          echo "available=true" >> $GITHUB_OUTPUT;
-        else
-          echo "available=false" >> $GITHUB_OUTPUT;
-        fi
+  #   - name: Check for FLATHUB_TOKEN
+  #     id: flathub-token-check
+  #     shell: bash
+  #     run: |
+  #       if [[ "${{ secrets.FLATHUB_TOKEN}}" != '' ]]; then
+  #         echo "available=true" >> $GITHUB_OUTPUT;
+  #       else
+  #         echo "available=false" >> $GITHUB_OUTPUT;
+  #       fi
 
-    - uses: actions/checkout@v4
-      if: ${{ steps.flathub-token-check.outputs.available == 'true' }}
-      with:
-        fetch-depth: 0
-        repository: ${{ github.repository_owner }}/io.github.wivrn.wivrn
-        path: flathub
-        token: ${{ secrets.FLATHUB_TOKEN }}
+  #   - uses: actions/checkout@v4
+  #     if: ${{ steps.flathub-token-check.outputs.available == 'true' }}
+  #     with:
+  #       fetch-depth: 0
+  #       repository: ${{ github.repository_owner }}/io.github.wivrn.wivrn
+  #       path: flathub
+  #       token: ${{ secrets.FLATHUB_TOKEN }}
 
-    - name: Download artifacts (APK)
-      uses: actions/download-artifact@v4
-      with:
-        path: apk
-        pattern: '*-Release'
-        merge-multiple: true
+  #   - name: Download artifacts (APK)
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       path: apk
+  #       pattern: '*-Release'
+  #       merge-multiple: true
 
-    - name: Download artifacts (flatpak)
-      uses: actions/download-artifact@v4
-      with:
-        name: wivrn-flatpak-x86_64
-        path: flatpak
+  #   - name: Download artifacts (flatpak)
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: wivrn-flatpak-x86_64
+  #       path: flatpak
 
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ inputs.ref }}
-        generate_release_notes: true
-        draft: true
-        files: |
-          apk/*.apk
-          flatpak/*.flatpak
+  #   - name: Release
+  #     uses: softprops/action-gh-release@v2
+  #     with:
+  #       tag_name: ${{ inputs.ref }}
+  #       generate_release_notes: true
+  #       draft: true
+  #       files: |
+  #         apk/*.apk
+  #         flatpak/*.flatpak
 
-    - name: Update flatpak manifest for flathub
-      if: ${{ steps.flathub-token-check.outputs.available == 'true' }}
-      run: |
-        WIVRN_TAG=$(echo $GITHUB_REF | sed -E -e "s,refs/[^/]*/v?,,")
+  #   - name: Update flatpak manifest for flathub
+  #     if: ${{ steps.flathub-token-check.outputs.available == 'true' }}
+  #     run: |
+  #       WIVRN_TAG=$(echo $GITHUB_REF | sed -E -e "s,refs/[^/]*/v?,,")
 
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "github-actions[bot]"
+  #       git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  #       git config --global user.name "github-actions[bot]"
 
-        sudo apt-get install python3-toml python3-aiohttp
+  #       sudo apt-get install python3-toml python3-aiohttp
 
-        cd flathub
-        git remote add upstream https://github.com/flathub/io.github.wivrn.wivrn.git
-        git fetch upstream
-        git reset --hard upstream/master
+  #       cd flathub
+  #       git remote add upstream https://github.com/flathub/io.github.wivrn.wivrn.git
+  #       git fetch upstream
+  #       git reset --hard upstream/master
 
-        git config --global --add safe.directory $(pwd)
-        ../wivrn/tools/gen_flatpak_manifest.py --git https://github.com/${{github.repository}}.git
-        cp ../wivrn/flatpak/*.config .
+  #       git config --global --add safe.directory $(pwd)
+  #       ../wivrn/tools/gen_flatpak_manifest.py --git https://github.com/${{github.repository}}.git
+  #       cp ../wivrn/flatpak/*.config .
 
-        git checkout -b $WIVRN_TAG
-        git add io.github.wivrn.wivrn.yml xrizer-gen-src.json *.config
-        git commit -m "Version "$WIVRN_TAG
-        git push --set-upstream origin $WIVRN_TAG
+  #       git checkout -b $WIVRN_TAG
+  #       git add io.github.wivrn.wivrn.yml xrizer-gen-src.json *.config
+  #       git commit -m "Version "$WIVRN_TAG
+  #       git push --set-upstream origin $WIVRN_TAG
 
-        git show
+  #       git show
 
-    - name: Update release branch
-      run: |
-        cd wivrn
-        if git fetch origin release; then
-          git push origin HEAD:release
-        fi
+  #   - name: Update release branch
+  #     run: |
+  #       cd wivrn
+  #       if git fetch origin release; then
+  #         git push origin HEAD:release
+  #       fi
 
-  sync_fork_downstream:
-    name: Sync fork downstream
-    runs-on: ubuntu-24.04
-    needs: [build-server, build-android]
-    if: ${{ vars.APK_ONLY == '' }} && github.branch == 'master'
-    steps:
-      - name: Check for DOWNSTREAM_GITHUB_TOKEN
-        id: downstream-secret-check
-        shell: bash
-        run: |
-          if [[ "${{ secrets.DOWNSTREAM_GITHUB_TOKEN }}" != '' ]]; then
-            echo "available=true" >> $GITHUB_OUTPUT;
-          else
-            echo "available=false" >> $GITHUB_OUTPUT;
-          fi
-      - name: Sync fork downstream
-        if: ${{ steps.downstream-secret-check.outputs.available == 'true' }}
-        run: |
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
-               -H "Authorization: token ${{ secrets.DOWNSTREAM_GITHUB_TOKEN }}" \
-               https://api.github.com/repos/WiVRn/WiVRn-APK/merge-upstream \
-               -d '{"branch":"master"}'
+  # sync_fork_downstream:
+  #   name: Sync fork downstream
+  #   runs-on: ubuntu-24.04
+  #   needs: [build-server, build-android]
+  #   if: ${{ vars.APK_ONLY == '' }} && github.branch == 'master'
+  #   steps:
+  #     - name: Check for DOWNSTREAM_GITHUB_TOKEN
+  #       id: downstream-secret-check
+  #       shell: bash
+  #       run: |
+  #         if [[ "${{ secrets.DOWNSTREAM_GITHUB_TOKEN }}" != '' ]]; then
+  #           echo "available=true" >> $GITHUB_OUTPUT;
+  #         else
+  #           echo "available=false" >> $GITHUB_OUTPUT;
+  #         fi
+  #     - name: Sync fork downstream
+  #       if: ${{ steps.downstream-secret-check.outputs.available == 'true' }}
+  #       run: |
+  #         curl -X POST -H "Accept: application/vnd.github.v3+json" \
+  #              -H "Authorization: token ${{ secrets.DOWNSTREAM_GITHUB_TOKEN }}" \
+  #              https://api.github.com/repos/WiVRn/WiVRn-APK/merge-upstream \
+  #              -d '{"branch":"master"}'
